@@ -1,0 +1,38 @@
+name: Build app in NCS docker container
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container: jangalda/draft-ncs-toolchain:0.1
+    steps:
+      - name: Checkout repository with example application
+        uses: actions/checkout@v4
+        with:
+          path: example-application
+
+      - name: Prepare west project
+        shell: bash
+        run: |
+          west init -l example-application
+          west update -o=--depth=1 -n
+
+      - name: Build firmware
+        working-directory: example-application
+        shell: bash
+        run: |
+          west twister -T app -v --inline-logs --integration
+
+      - name: Store hex files
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-applications
+          path: example-application/twister-out/**/zephyr/zephyr.hex
+
+      - name: Twister Tests
+        working-directory: example-application
+        shell: bash
+        run: |
+          west twister -T tests -v --inline-logs --integration
